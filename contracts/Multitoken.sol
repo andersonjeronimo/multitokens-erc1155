@@ -13,25 +13,24 @@ contract Multitoken is ERC1155, ERC1155Burnable {
 
     address payable public immutable _owner;
 
-    string private _uri = "https://ipfs/directory/tokens/";
+    string private _uri = "https://yellow-wonderful-vulture-357.mypinata.cloud/ipfs/QmSYDgxC6wKJ9SqyDFZpy3mrc5ikc8P7kvTUDHHsFPaunB/";
 
     uint256[] public currentSupply = [50, 50, 50];
     uint256 public tokenPrice = 0.01 ether;    
 
-    constructor() ERC1155("https://ipfs/directory/tokens/") {
+    constructor() ERC1155(_uri) {
         _owner = payable(msg.sender);
     }
 
     function mint(
         uint256 _id,
-        uint256 _amount,
-        bytes memory _data
+        uint256 _amount
     ) external payable {
         require(_id < 3, "This token _id does not exists");
-        require(currentSupply[_id] > 0, "Max supply reached");
-        require(msg.value >= tokenPrice, "Insufficient payment");
-        _mint(msg.sender, _id, _amount, _data);
-        currentSupply[_id] -= 1;
+        require(currentSupply[_id] >= _amount, "Amount greater than current supply");        
+        require(msg.value >= tokenPrice * _amount, "Insufficient payment");
+        _mint(msg.sender, _id, _amount, "0x00000000");
+        currentSupply[_id] -= _amount;
         emit TransferSingle(msg.sender, address(0), msg.sender, _id, _amount);
     }
 
