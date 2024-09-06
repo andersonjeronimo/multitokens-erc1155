@@ -136,7 +136,7 @@ describe("Multitoken", function () {
       .to.be.revertedWithCustomError(contract, "ERC1155MissingApprovalForAll");
   });
 
-  it("Should NOT safe BATCH transfer from (array mismatch)", async function () {
+  it("Should NOT safe batch transfer from (array mismatch)", async function () {
     const { contract, owner, otherAccount } = await loadFixture(deployFixture);
     await contract.mint(0, 1, { value: hre.ethers.parseEther("0.01") });
     await contract.mint(1, 1, { value: hre.ethers.parseEther("0.01") });
@@ -144,13 +144,65 @@ describe("Multitoken", function () {
       .to.be.revertedWithCustomError(contract, "ERC1155InvalidArrayLength");
   });
 
-  it("Should NOT safe BATCH transfer from (permission)", async function () {
+  it("Should NOT safe batch transfer from (permission)", async function () {
     const { contract, owner, otherAccount } = await loadFixture(deployFixture);
     await contract.mint(0, 1, { value: hre.ethers.parseEther("0.01") });
     await contract.mint(1, 1, { value: hre.ethers.parseEther("0.01") });
     const instance = contract.connect(otherAccount);
     await expect(instance.safeBatchTransferFrom(owner.address, otherAccount.address, [0, 1], [1, 1], "0x00000000"))
       .to.be.revertedWithCustomError(contract, "ERC1155MissingApprovalForAll");
+  });
+
+  //https://eips.ethereum.org/EIPS/eip-1155
+  it("Should supports interface", async function () {
+    const { contract } = await loadFixture(deployFixture);
+    const supports = await contract.supportsInterface("0xd9b67a26");    
+    expect(supports).to.be.equal(true, "Does not supports interface ERC-1155");
+  });
+
+  it("Should withdraw", async function () {
+    const { contract, owner, otherAccount } = await loadFixture(deployFixture);
+    
+    const instance = contract.connect(otherAccount);
+    await instance.mint(0, 3, { value: hre.ethers.parseEther("0.03") });
+    
+    const contractBalanceBefore = await hre.ethers.provider.getBalance(contract.getAddress());
+    const ownerBalanceBefore = await hre.ethers.provider.getBalance(owner.address);
+
+    await contract.withdraw();
+    
+    const contractBalanceAfter = await hre.ethers.provider.getBalance(contract.getAddress());
+    const ownerBalanceAfter = await hre.ethers.provider.getBalance(owner.address);
+
+    expect(contractBalanceBefore).to.be.equal(hre.ethers.parseEther("0.03"), "Cannot withdraw");
+    expect(contractBalanceAfter).to.be.equal(0, "Cannot withdraw");
+    
+    expect(ownerBalanceAfter).to.be.greaterThan(ownerBalanceBefore, "Cannot withdraw");
+  });
+
+  it("Should NOT withdraw (permission)", async function () {
+    const { contract, owner, otherAccount } = await loadFixture(deployFixture);    
+    const instance = contract.connect(otherAccount);
+    await expect(instance.withdraw()).to.be.revertedWith("You do not have permission");
+  });
+
+  it("Should has URI metadata", async function () {
+    const { contract } = await loadFixture(deployFixture);
+    await contract.mint(0, 3, { value: hre.ethers.parseEther("0.03") });
+    const uri = await contract.uri(0);    
+    expect(uri).to.be.equal("https://yellow-wonderful-vulture-357.mypinata.cloud/ipfs/QmSYDgxC6wKJ9SqyDFZpy3mrc5ikc8P7kvTUDHHsFPaunB/0.json");
+  });
+
+  it("Should NOT has URI metadata (token _id does not exists)", async function () {
+    const { contract } = await loadFixture(deployFixture);    
+    await contract.mint(0, 3, { value: hre.ethers.parseEther("0.03") });
+    await expect(contract.uri(4)).to.be.revertedWith("This token _id does not exists");
+  });
+
+  it("Should NOT has URI metadata (token _id was not minted yet)", async function () {
+    const { contract } = await loadFixture(deployFixture);    
+    await contract.mint(0, 1, { value: hre.ethers.parseEther("0.01") });
+    await expect(contract.uri(1)).to.be.revertedWith("This token _id was not minted yet");
   });
 
 

@@ -38,6 +38,7 @@ contract Multitoken is ERC1155, ERC1155Burnable {
         uint256 _id
     ) public view virtual override returns (string memory) {
         require(_id < 3, "This token _id does not exists");
+        require(currentSupply[_id] < 50, "This token _id was not minted yet");
         return string.concat(_uri, Strings.toString(_id), ".json");
     }
 
